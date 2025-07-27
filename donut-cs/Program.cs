@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace donut_cs
 {
@@ -10,8 +6,18 @@ namespace donut_cs
     {
         static void Main(string[] args)
         {
-            Solution solution = new Solution();
-            solution.RunDonut();
+            Console.Title = "Smooth Centered Donut";
+            Console.CursorVisible = false;
+
+            try
+            {
+                Solution solution = new Solution();
+                solution.RunDonut();
+            }
+            finally
+            {
+                Console.CursorVisible = true;
+            }
         }
     }
 }

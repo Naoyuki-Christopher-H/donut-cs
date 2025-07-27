@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace donut_cs
 {
@@ -12,19 +13,23 @@ namespace donut_cs
         {
             double A = 0;
             double B = 0;
-            double i;
-            double j;
             var z = new double[7040];
             var b = new char[1760];
+
+            // Adjustable parameters
+            const double rotationSpeed = 0.03; // Reduced from 0.04/0.02 to 0.75x speed
+            const int xOffset = 0;  // Center adjustment
+            const int yOffset = -3; // Center adjustment
+            const int frameDelay = 16; // ~60fps for smooth animation
 
             while (true)
             {
                 memset(b, ' ', 1760);
-                memset(z, 0.0f, 7040);
+                memset(z, 0.0, 7040);
 
-                for (j = 0; 6.28 > j; j += 0.07)
+                for (double j = 0; j < 6.28; j += 0.07)
                 {
-                    for (i = 0; 6.28 > i; i += 0.02)
+                    for (double i = 0; i < 6.28; i += 0.02)
                     {
                         double c = Math.Sin(i);
                         double d = Math.Cos(j);
@@ -37,12 +42,14 @@ namespace donut_cs
                         double m = Math.Cos(B);
                         double n = Math.Sin(B);
                         double t = c * h * g - f * e;
-                        int x = (int)(40 + 30 * D * (l * h * m - t * n));
-                        int y = (int)(12 + 15 * D * (l * h * n + t * m));
+
+                        // Added offsets to center the donut
+                        int x = (int)(40 + 30 * D * (l * h * m - t * n)) + xOffset;
+                        int y = (int)(12 + 15 * D * (l * h * n + t * m)) + yOffset;
                         int o = x + 80 * y;
                         int N = (int)(8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n));
 
-                        if (22 > y && y > 0 && x > 0 && 80 > x && D > z[o])
+                        if (y < 22 && y > 0 && x > 0 && x < 80 && D > z[o])
                         {
                             z[o] = D;
                             b[o] = ".,-~:;=!*#$@"[N > 0 ? N : 0];
@@ -51,10 +58,15 @@ namespace donut_cs
                 }
 
                 Console.Clear();
-                nl(b);
+                AddNewlines(b);
                 Console.Write(b);
-                A += 0.04;
-                B += 0.02;
+
+                // Apply slower rotation
+                A += rotationSpeed;
+                B += rotationSpeed * 0.5;
+
+                // Smooth frame timing
+                Thread.Sleep(frameDelay);
             }
         }
 
@@ -71,9 +83,9 @@ namespace donut_cs
             }
         }
 
-        private void nl(char[] b)
+        private void AddNewlines(char[] b)
         {
-            for (int i = 80; 1760 > i; i += 80)
+            for (int i = 80; i < 1760; i += 80)
             {
                 b[i] = '\n';
             }
