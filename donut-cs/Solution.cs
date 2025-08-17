@@ -3,92 +3,124 @@ using System.Threading;
 
 namespace donut_cs
 {
-    class Solution
+    public class Solution
     {
-        public Solution()
-        {
-        }
+        // Screen dimensions
+        private const int ScreenWidth = 80;
+        private const int ScreenHeight = 22;
+        private const int BufferSize = ScreenWidth * ScreenHeight;
+
+        // Animation parameters
+        private const double RotationSpeedA = 0.03;
+        private const double RotationSpeedB = 0.015;
+        private const int FrameDelayMs = 16;
+
+        // Donut parameters
+        private const double DonutRadius = 1.0;
+        private const double TubeRadius = 2.0;
+        private const double ViewDistance = 5.0;
+
+        // Centering offsets
+        private const int HorizontalOffset = 0;
+        private const int VerticalOffset = -3;
 
         public void RunDonut()
         {
-            double A = 0;
-            double B = 0;
-            var z = new double[7040];
-            var b = new char[1760];
+            double angleA = 0;
+            double angleB = 0;
 
-            // Adjustable parameters
-            const double rotationSpeed = 0.03; // Reduced from 0.04/0.02 to 0.75x speed
-            const int xOffset = 0;  // Center adjustment
-            const int yOffset = -3; // Center adjustment
-            const int frameDelay = 16; // ~60fps for smooth animation
+            var zBuffer = new double[BufferSize];
+            var frameBuffer = new char[BufferSize];
 
             while (true)
             {
-                memset(b, ' ', 1760);
-                memset(z, 0.0, 7040);
-
-                for (double j = 0; j < 6.28; j += 0.07)
+                // Replace Array.Fill with manual initialization
+                for (int i = 0; i < BufferSize; i++)
                 {
-                    for (double i = 0; i < 6.28; i += 0.02)
+                    frameBuffer[i] = ' ';
+                    zBuffer[i] = 0;
+                }
+
+                // Iterate through torus angles
+                for (double theta = 0; theta < 2 * Math.PI; theta += 0.07)
+                {
+                    for (double phi = 0; phi < 2 * Math.PI; phi += 0.02)
                     {
-                        double c = Math.Sin(i);
-                        double d = Math.Cos(j);
-                        double e = Math.Sin(A);
-                        double f = Math.Sin(j);
-                        double g = Math.Cos(A);
-                        double h = d + 2;
-                        double D = 1 / (c * h * e + f * g + 5);
-                        double l = Math.Cos(i);
-                        double m = Math.Cos(B);
-                        double n = Math.Sin(B);
-                        double t = c * h * g - f * e;
+                        // Precompute trigonometric values
+                        double sinPhi = Math.Sin(phi);
+                        double cosTheta = Math.Cos(theta);
+                        double sinAngleA = Math.Sin(angleA);
+                        double sinTheta = Math.Sin(theta);
+                        double cosAngleA = Math.Cos(angleA);
 
-                        // Added offsets to center the donut
-                        int x = (int)(40 + 30 * D * (l * h * m - t * n)) + xOffset;
-                        int y = (int)(12 + 15 * D * (l * h * n + t * m)) + yOffset;
-                        int o = x + 80 * y;
-                        int N = (int)(8 * ((f * e - c * d * g) * m - c * d * e - f * g - l * d * n));
+                        // Torus geometry calculations
+                        double circleDistance = TubeRadius + DonutRadius * cosTheta;
+                        double inverseDistance = 1 / (sinPhi * circleDistance * sinAngleA + sinTheta * cosAngleA + ViewDistance);
 
-                        if (y < 22 && y > 0 && x > 0 && x < 80 && D > z[o])
+                        double cosPhi = Math.Cos(phi);
+                        double cosAngleB = Math.Cos(angleB);
+                        double sinAngleB = Math.Sin(angleB);
+                        double t = sinPhi * circleDistance * cosAngleA - sinTheta * sinAngleA;
+
+                        // Calculate screen coordinates
+                        int x = (int)(ScreenWidth / 2 + (ScreenWidth / 2.7) * inverseDistance *
+                                      (cosPhi * circleDistance * cosAngleB - t * sinAngleB)) + HorizontalOffset;
+
+                        int y = (int)(ScreenHeight / 2 + (ScreenHeight / 2) * inverseDistance *
+                                      (cosPhi * circleDistance * sinAngleB + t * cosAngleB)) + VerticalOffset;
+
+                        int bufferIndex = x + ScreenWidth * y;
+
+                        // Luminance calculation
+                        int luminanceIndex = (int)(8 * (
+                            (sinTheta * sinAngleA - sinPhi * cosTheta * cosAngleA) * cosAngleB -
+                            sinPhi * cosTheta * sinAngleA -
+                            sinTheta * cosAngleA -
+                            cosPhi * cosTheta * sinAngleB));
+
+                        if (y >= 0 && y < ScreenHeight &&
+                            x >= 0 && x < ScreenWidth &&
+                            inverseDistance > zBuffer[bufferIndex])
                         {
-                            z[o] = D;
-                            b[o] = ".,-~:;=!*#$@"[N > 0 ? N : 0];
+                            zBuffer[bufferIndex] = inverseDistance;
+                            frameBuffer[bufferIndex] = ".,-~:;=!*#$@"[Math.Max(luminanceIndex, 0)];
                         }
                     }
                 }
 
-                Console.Clear();
-                AddNewlines(b);
-                Console.Write(b);
+                // Render frame
+                Console.SetCursorPosition(0, 0);
+                Console.Write(FormatFrameBuffer(frameBuffer));
 
-                // Apply slower rotation
-                A += rotationSpeed;
-                B += rotationSpeed * 0.5;
+                // Update rotation angles
+                angleA += RotationSpeedA;
+                angleB += RotationSpeedB;
 
-                // Smooth frame timing
-                Thread.Sleep(frameDelay);
+                Thread.Sleep(FrameDelayMs);
             }
         }
 
-        private void memset<T>(T[] buf, T val, int bufsz)
+        private char[] FormatFrameBuffer(char[] buffer)
         {
-            if (buf == null)
+            // Create a copy to avoid modifying the original buffer
+            var formattedBuffer = new char[BufferSize + ScreenHeight - 1];
+            int targetIndex = 0;
+
+            for (int y = 0; y < ScreenHeight; y++)
             {
-                buf = new T[bufsz];
+                for (int x = 0; x < ScreenWidth; x++)
+                {
+                    formattedBuffer[targetIndex++] = buffer[x + y * ScreenWidth];
+                }
+
+                // Add newline except after last row
+                if (y < ScreenHeight - 1)
+                {
+                    formattedBuffer[targetIndex++] = '\n';
+                }
             }
 
-            for (int i = 0; i < bufsz; i++)
-            {
-                buf[i] = val;
-            }
-        }
-
-        private void AddNewlines(char[] b)
-        {
-            for (int i = 80; i < 1760; i += 80)
-            {
-                b[i] = '\n';
-            }
+            return formattedBuffer;
         }
     }
 }
